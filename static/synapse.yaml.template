@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: Secret
+data:
+  cortex-auth-password: bWFyeS1oYWQtYS1saXR0bGUtbGFtYgo=
+metadata:
+  labels:
+    app.kubernetes.io/instance: synapse
+    app.kubernetes.io/component: secret
+    app.kubernetes.io/name: synapse
+  name: synapse
+  namespace: docintel
+type: Opaque
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app.kubernetes.io/instance: synapse
+    app.kubernetes.io/component: pvc
+    app.kubernetes.io/name: cortex-pvc
+  name: cortex-pvc
+  namespace: docintel
+spec:
+  # storageClassName: default
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: synapse-cortex-headless
+  namespace: docintel
+  labels:
+    app.kubernetes.io/instance: synapse
+    app.kubernetes.io/component: service
+    app.kubernetes.io/name: cortex
+spec:
+  ports:
+  - port: 4443
+    name: cortex-web
+    protocol: TCP
+    targetPort: cortex-web
+  clusterIP: None
+  selector:
+    app.kubernetes.io/instance: synapse
+    app.kubernetes.io/component: deployment
+    app.kubernetes.io/name: cortex
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: synapse-cortex
+  namespace: docintel
+  labels:
+    app.kubernetes.io/instance: synapse
+    app.kubernetes.io/component: service
+    app.kubernetes.io/name: cortex
+spec:
+  type: ClusterIP
+  ports:
+  - port: 4443
+    name: cortex-web
+    protocol: TCP
+    targetPort: cortex-web
+  selector:
+    app.kubernetes.io/instance: synapse
+    app.kubernetes.io/component: deployment
+    app.kubernetes.io/name: cortex
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: synapse-cortex
+  namespace: docintel
+  labels:
+    app.kubernetes.io/instance: synapse
+    app.kubernetes.io/component: deployment
+    app.kubernetes.io/name: cortex
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: synapse
+      app.kubernetes.io/component: deployment
+      app.kubernetes.io/name: cortex
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      namespace: docintel
+      labels:
+        app: synapse-cortex
+        app.kubernetes.io/instance: synapse
+        app.kubernetes.io/component: deployment
+        app.kubernetes.io/name: cortex
+    spec:
+      containers:
+      - name: cortex
+        image: docker.io/vertexproject/synapse-cortex:v2.x.x
+        ports:
+        - containerPort: 4443
+          name: cortex-web
+        env:
+        - name: SYN_CORTEX_AUTH_PASSWD
+          valueFrom:
+            secretKeyRef:
+              name: synapse
+              key: cortex-auth-password
+              optional: false # same as default; "mysecret" must exist
+        volumeMounts:
+        - name: cortex-data
+          mountPath: /vertex/storage
+      volumes:
+      - name: cortex-data
+        persistentVolumeClaim:
+          claimName: cortex-pvc

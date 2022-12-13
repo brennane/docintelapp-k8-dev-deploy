@@ -1,0 +1,189 @@
+#---------------------------------------------------------------------
+# Example configuration for a possible web application.  See the
+# full configuration options online.
+#
+#   http://haproxy.1wt.eu/download/1.4/doc/configuration.txt
+#
+#---------------------------------------------------------------------
+
+# SPLIT TRAFFIC BETWEEN OUR OLD (DOCKER-SWARM) and NEW (RKE2)
+# CLUSTERS BASED ON HTTPS.  HAS SOME TRICKS TO PASS-THROUGH
+# TLS BASED ON SNI SNIFFING
+
+#---------------------------------------------------------------------
+# Global settings
+#---------------------------------------------------------------------
+global
+    # to have these messages end up in /var/log/haproxy.log you will
+    # need to:
+    #
+    # 1) configure syslog to accept network log events.  This is done
+    #    by adding the '-r' option to the SYSLOGD_OPTIONS in
+    #    /etc/sysconfig/syslog
+    #
+    # 2) configure local2 events to go to the /var/log/haproxy.log
+    #   file. A line like the following can be added to
+    #   /etc/sysconfig/syslog
+    #
+    #    local2.*                       /var/log/haproxy.log
+    #
+    log         127.0.0.1 local2
+
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+
+    # turn on stats unix socket
+    stats socket /var/lib/haproxy/stats
+
+#---------------------------------------------------------------------
+# common defaults that all the 'listen' and 'backend' sections will
+# use if not designated in their block
+#---------------------------------------------------------------------
+defaults
+    mode                    http
+    log                     global
+    option                  httplog
+    option                  dontlognull
+    option http-server-close
+    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    timeout http-keep-alive 10s
+    timeout check           10s
+    maxconn                 3000
+
+    stats enable
+    stats hide-version
+    stats refresh 30s
+    stats show-node
+    stats uri /stats
+    stats realm Haproxy\ Statistics
+    stats auth admin:password1234
+
+#---------------------------------------------------------------------
+# main frontend which proxys to the backends
+#---------------------------------------------------------------------
+
+frontend http-in
+  bind *:80
+  reqadd X-Forwarded-Proto:\ http
+  http-request redirect scheme https code 301 if !{ ssl_fc }
+  default_backend docker_swarm_layer7
+
+# https://cheat.readthedocs.io/en/latest/haproxy.html#route-based-on-host-request-header
+
+# https://www.liip.ch/en/blog/haproxy-selective-tls-termination
+frontend https-tcp-in
+  mode tcp
+  bind *:443
+  tcp-request inspect-delay 2s
+  tcp-request content accept if { req_ssl_hello_type 1 }
+  use_backend kube_api_server if { req_ssl_sni -i k8api.rke2demo.lab.example.com }
+  default_backend bk_tcp_to_https
+
+backend bk_tcp_to_https
+    mode tcp
+    server haproxy-https 127.0.0.1:8443 check
+
+frontend https-in
+  bind 127.0.0.1:8443 ssl crt /etc/haproxy/lab-swarm-test-certs.pem
+
+  acl hdr_connection_upgrade hdr(Connection)  -i upgrade
+  acl hdr_upgrade_websocket  hdr(Upgrade)     -i websocket
+
+  use_backend rke2_istio   if { ssl_fc_sni_end k8.rke2demo.lab.example.com }
+  use_backend rke2_cluster if { ssl_fc_sni_end bare.rke2demo.lab.example.com }
+  # use_backend kube_api_server if { req_ssl_sni -i k8api.rke2demo.lab.example.com }
+  use_backend websocket_servers if { path_beg /v1/ws }
+  use_backend websocket_servers if hdr_connection_upgrade hdr_upgrade_websocket
+
+  reqadd X-Forwarded-Proto:\ https
+  default_backend docker_swarm_layer7
+
+# 
+# See also 
+# 
+# https://www.domstamand.com/adding-haproxy-as-load-balancer-to-the-kubernetes-cluster/
+#  match on *k8.rke2demo.lab.example.com
+# 
+#
+backend rke2_cluster 
+  # balance roundrobin
+  mode  http
+  balance source
+  #cookie SERVERUSED insert indirect nocache
+  #option httpchk HEAD /
+  server k80s1 lab-rke2-01tst:80 check port 80 cookie k80s1
+  server k80s2 lab-rke2-02tst:80 check port 80 cookie k80s2
+  server k80s3 lab-rke2-03tst:80 check port 80 cookie k80s3
+  #server k80a4 lab-rke2-04tst:80 check port 80 cookie k80a4
+  #server k80a5 lab-rke2-05tst:80 check port 80 cookie k80a5
+
+backend rke2_istio
+  # <fetched post istio install>
+  # kubectl -n istio-system get service istio-ingressgateway \
+  #   -o jsonpath='{.spec.ports[?(@.name=="http2")].nodePort
+  balance roundrobin
+  cookie SERVERUSED insert indirect nocache
+  # option httpchk HEAD /
+  #option tcp-check
+  server k80s1i lab-rke2-01tst:32554 check port 32554 cookie k80s1i
+  server k80s2i lab-rke2-02tst:32554 check port 32554 cookie k80s2i
+  server k80s3i lab-rke2-03tst:32554 check port 32554 cookie k80s3i
+
+backend websocket_servers 
+  option http-server-close
+  balance source
+  timeout connect 5s
+  timeout client 30s
+  timeout client-fin 30s
+  timeout server 30s
+  timeout tunnel  1h    # timeout to use with WebSocket and CONNECT
+  server host01 lab-swarm-01tst:80 check port 80
+
+
+backend docker_swarm_layer7
+  balance source
+  option tcp-check
+  option log-health-checks
+
+  server host01 lab-swarm-01tst:80 check port 80
+
+#
+# Kubernetes - Cluster Registration Address
+#
+#     = lab-swrmha-01tst:9345 =
+#
+
+frontend kube-registration-server
+  bind *:9345
+  mode tcp
+  option tcplog
+  default_backend kube-registration-server
+   
+backend kube-registration-server
+    mode tcp
+    option tcplog
+    option tcp-check
+    balance roundrobin
+    default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100
+    server lab-rke2-01tst 10.7.30.185:9345 check
+    server lab-rke2-02tst 10.7.30.186:9345 check 
+    server lab-rke2-03tst 10.7.30.187:9345 check
+
+backend kube_api_server
+  mode tcp
+  balance roundrobin
+  # option httpchk HEAD /
+  server k80s1 lab-rke2-01tst:6443 check port 6443 
+  server k80s2 lab-rke2-02tst:6443 check port 6443 
+  server k80s3 lab-rke2-03tst:6443 check port 6443 

@@ -1,0 +1,53 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${APP_NAME}
+  namespace: docintel
+  labels:
+    app: ${APP_NAME}
+    app.kubernetes.io/component: deployment
+    app.kubernetes.io/name: ${APP}
+    app.kubernetes.io/part-of: docintel
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: pod
+      app.kubernetes.io/name: ${APP}
+      app.kubernetes.io/part-of: docintel
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      namespace: docintel
+      labels:
+        app: ${APP_NAME}
+        app.kubernetes.io/component: pod
+        app.kubernetes.io/name: ${APP}
+        app.kubernetes.io/part-of: docintel
+    spec:
+      containers:
+      - name: ${APP_NAME}
+        image: ${REPOSITORY}/docintelapp/${APP}:${TAG}
+        volumeMounts:
+        - name: files
+          mountPath: /files
+        - name: locks
+          mountPath: /locks
+        - name: config
+          mountPath: /config/appsettings.json
+          subPath: appsettings.json
+        - name: config
+          mountPath: /config/nlog.config
+          subPath: nlog.config
+      volumes:
+      - name: files
+        persistentVolumeClaim:
+          claimName: docintel-files
+      - name: locks
+        persistentVolumeClaim:
+          claimName: docintel-locks
+      - configMap:
+          defaultMode: 444
+          name: docintel-config
+        name: config
