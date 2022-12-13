@@ -30,6 +30,7 @@ spec:
       containers:
       - name: ${APP_NAME}
         image: ${REPOSITORY}/docintelapp/${APP}:${TAG}
+        imagePullPolicy: ${PULL_POLICY}
         ports:
         - containerPort: ${APP_PORT}
           name: ${APP_NAME}

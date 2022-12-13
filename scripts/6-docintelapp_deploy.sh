@@ -3,8 +3,7 @@ docker_tag=$(cat static/DOCINTEL_DOCKER_TAG)
 echo ""
 echo "=== CREATE docintel_pvc"
 
-DOCINTEL_PVC_ACCESS_MODE="$(cat ,PVC_MODE)" \
-    envsubst < static/docintel-pvc.yaml.template > deploy/docintel_pvc.yaml
+DOCINTEL_PVC_ACCESS_MODE="$(cat ,PVC_MODE)" envsubst < static/docintel-pvc.yaml.template > deploy/docintel_pvc.yaml
 
 echo ""
 echo "=== COPY webapp service"
@@ -20,19 +19,21 @@ template2=static/docintel_webapp.yaml.template
 target=deploy/docintel_apps.yaml
 repo=$(cat ,REPO)
 
-cat $template1 | REPOSITORY=$repo APP=document-analyzer APP_NAME=doc-analyzer TAG=${docker_tag} envsubst > $target
-cat $template1 | REPOSITORY=$repo APP=document-indexer APP_NAME=doc-indexer TAG=${docker_tag} envsubst >> $target
-cat $template1 | REPOSITORY=$repo APP=importer APP_NAME=importer TAG=${docker_tag} envsubst >> $target
-cat $template1 | REPOSITORY=$repo APP=newsletter APP_NAME=newsletter TAG=${docker_tag} envsubst >> $target
-cat $template1 | REPOSITORY=$repo APP=scraper APP_NAME=scraper TAG=${docker_tag} envsubst >> $target
-cat $template1 | REPOSITORY=$repo APP=source-indexer APP_NAME=src-indexer TAG=${docker_tag} envsubst >> $target
-cat $template1 | REPOSITORY=$repo APP=tag-indexer APP_NAME=tag-indexer TAG=${docker_tag} envsubst >> $target
-cat $template1 | REPOSITORY=$repo APP=thumbnailer APP_NAME=thumbnailer TAG=${docker_tag} envsubst >> $target
-cat $template2 | REPOSITORY=$repo APP=webapp APP_NAME=webapp APP_PORT=80 TAG=${docker_tag} envsubst >> $target
+# see also https://stackoverflow.com/questions/55634254 (regarding how to live patch)
+pp=$(cat static/DOCINTEL_PULL_POLICY) # IfNotPresent (typ default) | Always (dev)
+
+cat $template1 | REPOSITORY=$repo PULL_POLICY=$pp APP=document-analyzer APP_NAME=doc-analyzer TAG=${docker_tag} envsubst > $target
+cat $template1 | REPOSITORY=$repo PULL_POLICY=$pp APP=document-indexer APP_NAME=doc-indexer TAG=${docker_tag} envsubst >> $target
+cat $template1 | REPOSITORY=$repo PULL_POLICY=$pp APP=importer APP_NAME=importer TAG=${docker_tag} envsubst >> $target
+cat $template1 | REPOSITORY=$repo PULL_POLICY=$pp APP=newsletter APP_NAME=newsletter TAG=${docker_tag} envsubst >> $target
+cat $template1 | REPOSITORY=$repo PULL_POLICY=$pp APP=scraper APP_NAME=scraper TAG=${docker_tag} envsubst >> $target
+cat $template1 | REPOSITORY=$repo PULL_POLICY=$pp APP=source-indexer APP_NAME=src-indexer TAG=${docker_tag} envsubst >> $target
+cat $template1 | REPOSITORY=$repo PULL_POLICY=$pp APP=tag-indexer APP_NAME=tag-indexer TAG=${docker_tag} envsubst >> $target
+cat $template1 | REPOSITORY=$repo PULL_POLICY=$pp APP=thumbnailer APP_NAME=thumbnailer TAG=${docker_tag} envsubst >> $target
+cat $template2 | REPOSITORY=$repo PULL_POLICY=$pp APP=webapp APP_NAME=webapp APP_PORT=80 TAG=${docker_tag} envsubst >> $target
 
 echo ""
 echo "=== DEPLOY APPLICATIONS"
-
 
 kubectl apply -f deploy/docintel_pvc.yaml
 kubectl apply -f deploy/docintel_apps.yaml

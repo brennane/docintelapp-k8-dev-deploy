@@ -74,3 +74,13 @@ but I have reset the k8s cluster a few times.
 
 - `scripts/K-uninstall.sh`
 
+## Development removing / adding docintel deployments
+
+Once the initial setup has been run we can remove / add the docintel deployments
+again w/out removing _everything_ assuming our configs don't change.
+
+- `kubectl delete -f deploy/docintel_apps.yaml'
+
+(update docker images)
+
+- `kubectl apply -f deploy/docintel_apps.yaml'

@@ -29,6 +29,7 @@ spec:
       containers:
       - name: ${APP_NAME}
         image: ${REPOSITORY}/docintelapp/${APP}:${TAG}
+        imagePullPolicy: ${PULL_POLICY}
         volumeMounts:
         - name: files
           mountPath: /files
