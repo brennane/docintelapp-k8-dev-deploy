@@ -1,3 +1,11 @@
+
+#  Kubernetes deployment scripts for "Docintelapp/DocIntel"
+
+Please see <https://github.com/Docintelapp/DocIntel> for official
+documentation.  I have no association with the project but wished to share
+these files to help boostrap a local or remote k8 environment for running
+the system.
+
 # Profile
 
 We have two profiles for testing kubernets.
