@@ -84,3 +84,9 @@ again w/out removing _everything_ assuming our configs don't change.
 (update docker images)
 
 - `kubectl apply -f deploy/docintel_apps.yaml`
+
+# TODO
+
+- (definitely) script to build and publish docintel images to a local
+  registry within kubernetes
+- (possibly) convert docintel files into a Helm manifest.
