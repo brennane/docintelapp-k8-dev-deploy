@@ -32,8 +32,8 @@ configuraiton files and starts up the collections.
 This writes the `appsettings.json` used by docintel applications and
 saves this into a kubernetes config-map.
 
-_If_ `,BASE_URL` exists (e.g. "https://docintel.lab.example.com") then
-this will be patched into `appsettings.json`
+_If_ `,BASE_URL` exists (e.g. `https://docintel.lab.example.com/`) then
+this will be patched into `appsettings.json` for the ApplicationUrl.
 
 `6-docintelapp_deploy.sh`
 
