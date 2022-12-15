@@ -1,4 +1,5 @@
 branch=$(cat static/DOCINTEL_BRANCH)
+base_url=$(cat ,BASE_URL 2> /dev/null || echo "http://localhost:8080/")
 
 #  nc -w 0 -zv postgresql.docintel.svc.cluster.local 5432
 postgres_user=postgres
@@ -39,6 +40,9 @@ mkdir -p $conffolder
 curl https://raw.githubusercontent.com/docintelapp/DocIntel/${branch}/conf/appsettings.json.example -o $conffolder/appsettings.json.orig
 curl https://raw.githubusercontent.com/docintelapp/DocIntel/${branch}/conf/appsettings.json.example -o $conffolder/appsettings.json
 curl https://raw.githubusercontent.com/docintelapp/DocIntel/${branch}/conf/nlog.config.example -o $conffolder/nlog.config
+
+# Application URL
+sed -i.bck "/ApplicationBaseURL/ s~http://localhost:5005/~${base_url}~g" $conffolder/appsettings.json
 
 # POSTGRES SETTINGS
 sed -i.bck "s~_POSTGRES_USER_~${postgres_user}~g" $conffolder/appsettings.json

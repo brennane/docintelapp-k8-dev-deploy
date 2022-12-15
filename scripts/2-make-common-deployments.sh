@@ -22,19 +22,17 @@ REPOSITORY="${repo}" envsubst < static/synapse.yaml.template  > common/synapse.y
 
 case ${profile} in
     lab)
+        # just a little bigger
         solr_zookeeper="true"
         solr_options="--set auth.enabled=false"
-        solr_options="${solr_options} --set replicaCount=3"
-        solr_options="${solr_options} --set collectionReplicas=3"
+        solr_options="${solr_options} --set replicaCount=2"
+        solr_options="${solr_options} --set collectionReplicas=2"
         di_accessmode=ReadWriteMany
         ;;
     docker-desktop | rancher-desktop)
         profile="rancher-desktop"
         solr_zookeeper="true"
         solr_options="--set auth.enabled=false"
-        # solr_options="${solr_options} --set zookeeper.enabled=false"
-        # solr_options="${solr_options} --set cloudEnabled=false"
-        # solr_options="${solr_options} --set cloudBootstrap=false"
         solr_options="${solr_options} --set replicaCount=1"
         solr_options="${solr_options} --set collectionReplicas=1"
         # only have pod/solr-0 

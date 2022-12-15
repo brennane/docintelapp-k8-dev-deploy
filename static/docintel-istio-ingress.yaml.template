@@ -1,0 +1,44 @@
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: gateway
+  namespace: docintel
+  labels:
+    app.kubernetes.io/instance: gateway
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/name: gateway
+spec:
+  selector:
+    istio: ingressgateway # use Istio default gateway implementation
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "$HOSTNAME"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: webapp-vc
+  namespace: docintel
+  labels:
+    app.kubernetes.io/instance: virtualservice
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/name: webapp-vc
+spec:
+  hosts:
+  - "$HOSTNAME"
+  gateways:
+  - gateway
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: webapp
+        port:
+          number: 8080
