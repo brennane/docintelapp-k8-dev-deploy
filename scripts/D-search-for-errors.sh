@@ -11,10 +11,10 @@ for what in $(kubectl -n docintel get deploy -ojsonpath='{.items[*].metadata.lab
 done
 
 echo ""
-echo "Searching preveious processes"
+echo "Searching previous processes"
 
 for what in $(kubectl -n docintel get deploy -ojsonpath='{.items[*].metadata.labels.app}'); do
     echo ""
     echo "${what}: ..."
-    kubectl -n docintel logs deploy/${what} -p | grep -C $search_target
+    kubectl -n docintel logs deploy/${what} -p 2> /dev/null | grep -C $search_target
 done
