@@ -54,8 +54,8 @@ out version that recursively kills things that might weed out a stale PVC.
    database and extension and the docintel solr configs applied (note)
 - `5-docintelapp_prepare.sh` docintell app-configs need a few passwords
    and other settings and this is building the config-map for docintel
-- `6-docintelapp_deploy.sh` will deploy the docintell applications and set
-   a dummy admin and dummy password (see script)
+- `6-docintelapp_deploy.sh` will deploy the docintell applications 
+- `7-docintelapp_config.sh` set an admin account.
 
 (note) solr is not happy in this configuration, and
 `static/DOCINTEL_DOCKER_TAG` may need to be updated at this point.
