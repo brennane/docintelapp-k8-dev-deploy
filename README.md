@@ -57,8 +57,11 @@ out version that recursively kills things that might weed out a stale PVC.
 - `6-docintelapp_deploy.sh` will deploy the docintell applications 
 - `7-docintelapp_config.sh` set an admin account.
 
-(note) solr is not happy in this configuration, and
-`static/DOCINTEL_DOCKER_TAG` may need to be updated at this point.
+Istio:
+
+- For istio use envsubt and the file
+  `static/docintel-istio-ingress.yaml.template` which will expose the
+  web-application to `$HOSTNAME` (this assumes an external load-balancer)
 
 
 ## Running
